@@ -73,11 +73,13 @@ int main()
     signal(SIGINT, sig_handler);
     signal(SIGTSTP, sig_handler);
     
-    FILE* camera = fopen(camFile, "rb");
+    FILE* camera;
 
 	/* Read data from camera in the path to the specified device file and send it to the client */
     size_t bufSize, bytesRead;
     while (!done) {
+        camera = fopen(camFile, "rb");
+        
         /* Continuously read the whole image file */
         fseek(camera, 0L, SEEK_END);
         bufSize = ftell(camera);
@@ -86,6 +88,10 @@ int main()
         vector<char> buf(bufSize);
         bytesRead = fread(buf.data(), sizeof(char), bufSize, camera);
         send(connectfd, buf.data(), bytesRead, 0);
+        
+        fclose(camera);
+       // fflush(nullptr);
+        // usleep(300000);
     }
 
 	close(connectfd);
