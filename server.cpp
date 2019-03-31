@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <png.h>
 #include <iostream>
 #include <vector>
@@ -15,8 +16,20 @@
 using namespace std;
 
 const short port = 8080;
-const size_t bufSize = 1024;
 const char* camFile = "";  // pathname specifying pathname to camera under /dev
+bool done = false; // controls infinite loop in main
+
+void sig_handler(int signum)
+{
+    switch (signum) {
+        case SIGINT:
+        case SIGTSTP:
+            done = true;
+            break;
+        default:
+            break;
+    }
+}
 
 int main(int argc, char **argv)
 {
@@ -57,14 +70,23 @@ int main(int argc, char **argv)
         exit(1);
     }
     
+    signal(SIGINT, sig_handler);
+    signal(SIGTSTP, sig_handler);
+    
     FILE* camera = fopen(camFile, "rb");
 
 	/* Read data from camera in the path to the specified device file and send it to the client */
-	char buf[bufSize];
-    size_t bytesRead;
-	while ((bytesRead = fread(buf, sizeof(char), bufSize, camera)) > 0) {
-		send(connectfd, buf, bytesRead, 0);
-	}
+    size_t bufSize, bytesRead;
+    while (!done) {
+        /* Continuously read the whole image file */
+        fseek(camera, 0L, SEEK_END);
+        bufSize = ftell(camera);
+        fseek(camera, 0L, SEEK_SET);
+        
+        vector<char> buf(bufSize);
+        bytesRead = fread(buf.data(), sizeof(char), bufSize, camera);
+        send(connectfd, buf, bytesRead, 0);
+    }
 
 	close(connectfd);
     close(socketfd);
