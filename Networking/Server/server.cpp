@@ -16,7 +16,6 @@
 using namespace std;
 
 const short port = 8080;
-const char* camFile = "golden-retriever-puppy.jpeg";  // pathname specifying pathname to camera under /dev
 bool done = false; // controls infinite loop in main
 
 void sig_handler(int signum)
@@ -73,28 +72,29 @@ int main()
     signal(SIGINT, sig_handler);
     signal(SIGTSTP, sig_handler);
     
-    FILE* camera;
+    FILE* image;
 
 	/* Read data from camera in the path to the specified device file and send it to the client */
     size_t bufSize, bytesRead;
     while (!done) {
-        camera = fopen(camFile, "rb");
+        system("yes | sudo avconv -f video4linux2 -s 640x480 -i /dev/video0 -ss 0:0:2 -frames 1 out.jpg");
+        image = fopen("out.jpg", "rb");
         
         /* Continuously read the whole image file */
-        fseek(camera, 0L, SEEK_END);
-        bufSize = ftell(camera);
-        fseek(camera, 0L, SEEK_SET);
+        fseek(image, 0L, SEEK_END);
+        bufSize = ftell(image);
+        fseek(image, 0L, SEEK_SET);
         
         vector<char> buf(bufSize);
-        bytesRead = fread(buf.data(), sizeof(char), bufSize, camera);
+        bytesRead = fread(buf.data(), sizeof(char), bufSize, image);
         send(connectfd, buf.data(), bytesRead, 0);
         
-        fclose(camera);
-       // fflush(nullptr);
-        // usleep(300000);
+        fclose(image);
+        // system("sudo rm -f out.jpg");
+        // usleep(500000);
     }
 
-	close(connectfd);
+    close(connectfd);
     close(socketfd);
     exit(0);
 }
